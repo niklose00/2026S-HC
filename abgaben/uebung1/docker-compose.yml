@@ -1,0 +1,79 @@
+# Startet den gesamten Demonstrator: Broker + alle Komponenten als getrennte
+# Container. Jede Komponente ist ein eigener Prozess -> Verteilung.
+#
+#   docker compose up --build
+#
+# Dashboard:    http://localhost:8000
+# Fremdgeraet:  http://localhost:8001/status
+#
+# Die simulierten Sensoren erzeugen ihre Werte rein rechnerisch
+# (common/simulator.py) -- es ist kein API-Key noetig.
+
+services:
+  broker:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    ports:
+      - "1883:1883"
+
+  temp-sensor:
+    build: .
+    command: python -m devices.temp_sensor
+    environment:
+      MQTT_HOST: broker
+    depends_on: [broker]
+
+  motion-sensor:
+    build: .
+    command: python -m devices.motion_sensor
+    environment:
+      MQTT_HOST: broker
+    depends_on: [broker]
+
+  smart-light:
+    build: .
+    command: python -m devices.smart_light
+    environment:
+      MQTT_HOST: broker
+    depends_on: [broker]
+
+  rest-device:
+    build: .
+    command: uvicorn rest_device.service:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+
+  adapter:
+    build: .
+    command: python -m rest_device.adapter
+    environment:
+      MQTT_HOST: broker
+      PLUG_URL: http://rest-device:8001
+    depends_on: [broker, rest-device]
+
+  automation:
+    build: .
+    command: python -m services.automation
+    environment:
+      MQTT_HOST: broker
+    depends_on: [broker]
+
+  cloud-sync:
+    build: .
+    command: python -m services.cloud_sync
+    environment:
+      MQTT_HOST: broker
+      CLOUD_DB: /data/cloud.db
+    volumes:
+      - ./data:/data
+    depends_on: [broker]
+
+  dashboard:
+    build: .
+    command: uvicorn services.dashboard:app --host 0.0.0.0 --port 8000
+    environment:
+      MQTT_HOST: broker
+    ports:
+      - "8000:8000"
+    depends_on: [broker]
