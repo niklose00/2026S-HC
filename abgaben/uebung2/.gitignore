@@ -1,0 +1,21 @@
+# Build-Artefakte
+divergence_bench
+divergence_bench.exe
+bandwidth_bench
+bandwidth_bench.exe
+*.exp
+*.lib
+*.obj
+*.o
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor/OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Zwischenprodukte der PDF-Erzeugung
+BERICHT.html
